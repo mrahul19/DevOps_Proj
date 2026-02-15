@@ -2,9 +2,13 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "mrahul19/devops-product-app"
+        DOCKER_IMAGE = "mrahul19/abc-technologies"
         DOCKER_TAG = "${BUILD_NUMBER}"
-        KUBECONFIG = credentials('kubeconfig')
+        DOCKER_CREDENTIALS = 'docker-hub-credentials'
+    }
+
+    triggers {
+        githubPush()
     }
 
     stages {
@@ -52,7 +56,7 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'USER', passwordVariable: 'PASS')]) {
+                withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS}", usernameVariable: 'USER', passwordVariable: 'PASS')]) {
                     sh "echo $PASS | docker login -u $USER --password-stdin"
                     sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
                     sh "docker push ${DOCKER_IMAGE}:latest"
