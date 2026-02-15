@@ -1,0 +1,61 @@
+---
+- name: Deploy DevOps Product Application
+  hosts: app_servers
+  become: yes
+  vars:
+    docker_image: "mrahul19/devops-product-app:latest"
+    app_port: 8080
+
+  tasks:
+    - name: Install Docker dependencies
+      apt:
+        name:
+          - docker.io
+          - docker-compose
+          - python3-docker
+        state: present
+        update_cache: yes
+
+    - name: Start Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Pull latest Docker image
+      docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+        force_source: yes
+
+    - name: Stop existing container
+      docker_container:
+        name: devops-app
+        state: absent
+      ignore_errors: yes
+
+    - name: Deploy application container
+      docker_container:
+        name: devops-app
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: unless-stopped
+        ports:
+          - "{{ app_port }}:8080"
+        env:
+          DB_URL: "jdbc:mysql://mysql:3306/devopsdb"
+          DB_USER: "root"
+          DB_PASS: "password"
+
+    - name: Wait for application to start
+      uri:
+        url: "http://localhost:{{ app_port }}"
+        status_code: 200
+      register: result
+      retries: 10
+      delay: 5
+      until: result.status == 200
+
+    - name: Verify application is running
+      debug:
+        msg: "Application deployed successfully on port {{ app_port }}"
